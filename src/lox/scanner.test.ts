@@ -174,4 +174,13 @@ describe('Scanner', () => {
         expect(tokens).toHaveLength(2);
         expect(tokens[0].type).toBe(type)
     })
+
+    it('/* ... */ 블록 주석', () => {
+        const scanner = new Scanner('/*\n\n\n\n\n\n\n\n\n주석입니다.\n\n\n\n\n\n*/')
+
+        const tokens = scanner.scanTokens();
+
+        expect(tokens).toHaveLength(1);
+        expect(tokens[0].type).toBe(TokenType.EOF);
+    })
 })

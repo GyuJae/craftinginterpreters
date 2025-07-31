@@ -99,7 +99,8 @@ export class Scanner {
                 break;
             }
             case '/': {
-                if(this.match('/')) while(this.peek() != '\n' && !this.isAtEnd()) this.advance();
+                if(this.match('/')) while(this.peek() !== '\n' && !this.isAtEnd()) this.advance();
+                else if(this.match('*')) this.blockComment();
                 else this.addToken(TokenType.SLASH);
                 break;
             }
@@ -203,5 +204,21 @@ export class Scanner {
 
     private isAlphaNumeric(c: string): boolean {
         return this.isAlpha(c) || this.isDigit(c);
+    }
+
+    private blockComment(): void {
+        while (!this.isAtEnd()) {
+            if (this.peek() === '\n') this.line++;
+
+            if (this.peek() === '*' && this.peekNext() === '/') {
+                this.advance(); // '*'
+                this.advance(); // '/'
+                return;
+            }
+
+            this.advance();
+        }
+
+        throw new Error(`${this.line} line -> Unterminated block comment.`);
     }
 }
