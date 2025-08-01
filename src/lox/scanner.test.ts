@@ -183,4 +183,19 @@ describe('Scanner', () => {
         expect(tokens).toHaveLength(1);
         expect(tokens[0].type).toBe(TokenType.EOF);
     })
+
+    it('var beverage = "espresso";', () => {
+        const source = 'var beverage = "espresso";';
+        const scanner = new Scanner(source);
+
+        const tokens = scanner.scanTokens();
+
+        expect(tokens).toHaveLength(6);
+        expect(tokens[0].type).toBe(TokenType.VAR);
+        expect(tokens[1].type).toBe(TokenType.IDENTIFIER);
+        expect(tokens[2].type).toBe(TokenType.EQUAL);
+        expect(tokens[3].type).toBe(TokenType.STRING);
+        expect(tokens[4].type).toBe(TokenType.SEMICOLON);
+        expect(tokens[5].type).toBe(TokenType.EOF);
+    })
 })

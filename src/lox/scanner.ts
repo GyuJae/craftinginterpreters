@@ -104,7 +104,7 @@ export class Scanner {
                 else this.addToken(TokenType.SLASH);
                 break;
             }
-            case '':
+            case ' ':
             case '\r':
             case '\t':
                 break;
