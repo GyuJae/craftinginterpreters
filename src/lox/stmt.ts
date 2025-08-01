@@ -6,6 +6,8 @@ export interface IStmtVisitor<R> {
   visitExpressionStmt(stmt: Expression): R;
   visitPrintStmt(stmt: Print): R;
   visitVarStmt(stmt: Var): R;
+  visitIfStmt(stmt: If): R;
+  visitWhileStmt(stmt: While): R;
 }
 
 export abstract class Stmt {
@@ -32,6 +34,20 @@ export class Expression extends Stmt {
   }
 }
 
+export class If extends Stmt {
+  constructor(
+    public readonly condition: Expr,
+    public readonly thenBranch: Stmt,
+    public readonly elseBranch: Stmt,
+  ) {
+    super();
+  }
+
+  accept<R>(visitor: IStmtVisitor<R>): R {
+    return visitor.visitIfStmt(this);
+  }
+}
+
 export class Print extends Stmt {
   constructor(public readonly expression: Expr) {
     super();
@@ -52,5 +68,18 @@ export class Var extends Stmt {
 
   accept<R>(visitor: IStmtVisitor<R>): R {
     return visitor.visitVarStmt(this);
+  }
+}
+
+export class While extends Stmt {
+  constructor(
+    public readonly condition: Expr,
+    public readonly body: Stmt,
+  ) {
+    super();
+  }
+
+  accept<R>(visitor: IStmtVisitor<R>): R {
+    return visitor.visitWhileStmt(this);
   }
 }

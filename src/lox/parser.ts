@@ -1,39 +1,7 @@
-/*
-    expression          -> assignment;
-    assignment          -> IDENTIFIER "=" assignment | equality ;
-    equality(동등)       -> comparison ( ( "!=" | "*" ) unary )* ;
-    comparison(비교)     -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-    term(항)             -> factor ( ("-" | "+") factor )* ;
-    factor(인수)         -> unary ( ( "/" | "*" ) unary )* ;
-    unary(단항)          -> ( "!" | "-" ) unary | primary;
-    primary(기본식)       -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
-*/
-
-/*
-    문법 표기          |   코드 표현
-    터미널            |   토큰을 매치하여 소비하는 코드
-    넌터미널           |   해당 규칙의 함수를 호출
-    |                |  if 또는 switch 문
-    * 또는 +          |  while 또는 for 루프
-    ?                |   if 문
- */
-
-// TODO https://github.com/munificent/craftinginterpreters/blob/master/note/answers/chapter06_parsing.md
-
-/*
-program     -> declaration* EOF ;
-declaration -> varDecl | statement ;
-varDecl     -> "var" IDENTIFIER ( "=" expression )? ";" ;
-statement   -> exprStmt | printStmt | block ;
-exprStmt    -> expression ";" ;
-printStmt   -> "print" expression ";" ;
-block       -> "{" declaration* "}" ;
- */
-
 import type { Token } from './token.ts';
-import { Assign, Binary, type Expr, Grouping, Literal, Unary, Variable } from './expr.ts';
+import { Assign, Binary, type Expr, Grouping, Literal, Logical, Unary, Variable } from './expr.ts';
 import { TokenType } from './token-type.ts';
-import { Block, Expression, Print, type Stmt, Var } from './stmt.ts';
+import { Block, Expression, If, Print, type Stmt, Var, While } from './stmt.ts';
 
 class ParserError extends Error {}
 
@@ -76,7 +44,7 @@ export class Parser {
   }
 
   private assignment(): Expr {
-    const expr: Expr = this.equality();
+    const expr: Expr = this.or();
 
     if (this.match(TokenType.EQUAL)) {
       const equals: Token = this.previous();
@@ -243,9 +211,65 @@ export class Parser {
   }
 
   private statement(): Stmt {
+    if (this.match(TokenType.FOR)) return this.forStatement();
+    if (this.match(TokenType.IF)) return this.ifStatement();
     if (this.match(TokenType.PRINT)) return this.printStatement();
+    if (this.match(TokenType.WHILE)) return this.whileStatement();
     if (this.match(TokenType.LEFT_BRACE)) return new Block(this.block());
     return this.expressionStatement();
+  }
+
+  private forStatement(): Stmt {
+    this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.");
+
+    let initializer: Stmt | undefined;
+    if (this.match(TokenType.SEMICOLON)) {
+      initializer = undefined;
+    } else if (this.match(TokenType.VAR)) {
+      initializer = this.varDeclaration();
+    } else {
+      initializer = this.expressionStatement();
+    }
+
+    let condition: Expr | undefined;
+    if (!this.check(TokenType.SEMICOLON)) {
+      condition = this.expression();
+    }
+    this.consume(TokenType.SEMICOLON, "Expect ';' after loop condition.");
+
+    let increment: Expr | undefined;
+    if (!this.check(TokenType.RIGHT_PAREN)) {
+      increment = this.expression();
+    }
+    this.consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.");
+    let body = this.statement();
+
+    if (increment) {
+      body = new Block([body, new Expression(increment)]);
+    }
+
+    if (!condition) condition = new Literal(true);
+    body = new While(condition, body);
+
+    if (initializer) {
+      body = new Block([initializer, body]);
+    }
+
+    return body;
+  }
+
+  private ifStatement(): Stmt {
+    this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.");
+    const condition: Expr = this.expression();
+    this.consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition");
+
+    const thenBranch: Stmt = this.statement();
+    let elseBranch: Stmt;
+    if (this.match(TokenType.ELSE)) {
+      elseBranch = this.statement();
+    }
+
+    return new If(condition, thenBranch, elseBranch!);
   }
 
   private block(): Array<Stmt> {
@@ -269,5 +293,38 @@ export class Parser {
     const expr: Expr = this.expression();
     this.consume(TokenType.SEMICOLON, "Expect ';' after expression.");
     return new Expression(expr);
+  }
+
+  private or(): Expr {
+    let expr: Expr = this.and();
+
+    while (this.match(TokenType.OR)) {
+      const operator: Token = this.previous();
+      const right: Expr = this.equality();
+      expr = new Logical(expr, operator, right);
+    }
+
+    return expr;
+  }
+
+  private and(): Expr {
+    let expr: Expr = this.equality();
+
+    while (this.match(TokenType.AND)) {
+      const operator: Token = this.previous();
+      const right: Expr = this.equality();
+      expr = new Logical(expr, operator, right);
+    }
+
+    return expr;
+  }
+
+  private whileStatement(): Stmt {
+    this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.");
+    const condition: Expr = this.expression();
+    this.consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.");
+    const body: Stmt = this.statement();
+
+    return new While(condition, body);
   }
 }

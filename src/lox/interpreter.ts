@@ -5,13 +5,14 @@ import {
   Grouping,
   type IExprVisitor,
   Literal,
+  Logical,
   Unary,
   Variable,
 } from './expr.ts';
 import { TokenType } from './token-type.ts';
 import type { Token } from './token.ts';
 import { RuntimeException } from './runtime-exception.ts';
-import { Block, Expression, type IStmtVisitor, Stmt, Var } from './stmt.ts';
+import { Block, Expression, If, type IStmtVisitor, Stmt, Var, While } from './stmt.ts';
 import { Environment } from './environment.ts';
 
 export class Interpreter implements IExprVisitor<unknown>, IStmtVisitor<void> {
@@ -162,6 +163,32 @@ export class Interpreter implements IExprVisitor<unknown>, IStmtVisitor<void> {
       }
     } finally {
       this.environment = previous;
+    }
+  }
+
+  visitIfStmt(stmt: If): void {
+    if (this.isTruthy(this.evaluate(stmt.condition))) {
+      this.execute(stmt.thenBranch);
+    } else if (stmt.elseBranch) {
+      this.execute(stmt.elseBranch);
+    }
+  }
+
+  visitLogicalExpr(expr: Logical): unknown {
+    const left: unknown = this.evaluate(expr.left);
+
+    if (expr.operator.type === TokenType.OR) {
+      if (this.isTruthy(left)) return left;
+    } else {
+      if (!this.isTruthy(left)) return left;
+    }
+
+    return this.evaluate(expr.right);
+  }
+
+  visitWhileStmt(stmt: While): void {
+    while (this.isTruthy(this.evaluate(stmt.condition))) {
+      this.execute(stmt.body);
     }
   }
 }
