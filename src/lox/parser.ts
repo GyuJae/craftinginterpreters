@@ -1,5 +1,6 @@
 /*
-    expression          -> equality;
+    expression          -> assignment;
+    assignment          -> IDENTIFIER "=" assignment | equality ;
     equality(동등)       -> comparison ( ( "!=" | "*" ) unary )* ;
     comparison(비교)     -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
     term(항)             -> factor ( ("-" | "+") factor )* ;
@@ -7,7 +8,6 @@
     unary(단항)          -> ( "!" | "-" ) unary | primary;
     primary(기본식)       -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
 */
-
 
 /*
     문법 표기          |   코드 표현
@@ -20,9 +20,20 @@
 
 // TODO https://github.com/munificent/craftinginterpreters/blob/master/note/answers/chapter06_parsing.md
 
+/*
+program     -> declaration* EOF ;
+declaration -> varDecl | statement ;
+varDecl     -> "var" IDENTIFIER ( "=" expression )? ";" ;
+statement   -> exprStmt | printStmt | block ;
+exprStmt    -> expression ";" ;
+printStmt   -> "print" expression ";" ;
+block       -> "{" declaration* "}" ;
+ */
+
 import type {Token} from "./token.ts";
-import {Binary, type Expr, Grouping, Literal, Unary} from "./expr.ts";
+import {Assign, Binary, type Expr, Grouping, Literal, Unary, Variable} from "./expr.ts";
 import {TokenType} from "./token-type.ts";
+import {Block, Expression, Print, type Stmt, Var} from "./stmt.ts";
 
 class ParserError extends Error {}
 
@@ -31,12 +42,55 @@ export class Parser {
 
     constructor(private readonly tokens: Token[]) {}
 
-    parse(): Expr {
-        return this.expression();
+    parse(): Array<Stmt> {
+        const statements: Array<Stmt> = [];
+        while(!this.isAtEnd()) {
+            statements.push(this.declaration());
+        }
+        return statements;
     }
 
+    private declaration(): Stmt {
+        try {
+            if(this.match(TokenType.VAR)) return this.varDeclaration();
+            return this.statement();
+        } catch(error) {
+            this.synchronize();
+            throw error;
+        }
+    }
+
+    private varDeclaration(): Stmt {
+        const name: Token = this.consume(TokenType.IDENTIFIER, "Expect variable name.");
+
+        let initializer: Expr;
+        if(this.match(TokenType.EQUAL)) {
+            initializer = this.expression();
+        }
+        this.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.");
+        return new Var(name, initializer!);
+    }
+
+
     private expression(): Expr {
-        return this.equality();
+        return this.assignment();
+    }
+
+    private assignment(): Expr {
+        const expr: Expr = this.equality();
+
+        if(this.match(TokenType.EQUAL)) {
+            const equals: Token = this.previous();
+            const value: Expr = this.assignment();
+
+            if(expr instanceof Variable) {
+                return new Assign(expr.name, value);
+            }
+
+            this.error(equals, "Invalid assignment target.");
+        }
+
+        return expr;
     }
 
     // comparison ( ( "!=" | "*" ) unary )* ;
@@ -104,6 +158,10 @@ export class Parser {
 
         if(this.match(TokenType.NUMBER, TokenType.STRING)) {
             return new Literal(this.previous().literal);
+        }
+
+        if(this.match(TokenType.IDENTIFIER)) {
+            return new Variable(this.previous());
         }
 
         if(this.match(TokenType.LEFT_PAREN)) {
@@ -182,5 +240,32 @@ export class Parser {
         }
     }
 
+    private statement(): Stmt {
+        if(this.match(TokenType.PRINT)) return this.printStatement();
+        if(this.match(TokenType.LEFT_BRACE)) return new Block(this.block());
+        return this.expressionStatement();
+    }
 
+    private block(): Array<Stmt> {
+        const statements: Array<Stmt> = [];
+
+        while(!this.check(TokenType.RIGHT_BRACE) && !this.isAtEnd()) {
+            statements.push(this.declaration());
+        }
+
+        this.consume(TokenType.RIGHT_BRACE, "Expect '}' after block.");
+        return statements;
+    }
+
+    private printStatement(): Stmt {
+        const value: Expr = this.expression();
+        this.consume(TokenType.SEMICOLON, "Expect ';' after value.");
+        return new Print(value);
+    }
+
+    private expressionStatement(): Stmt {
+        const expr: Expr = this.expression();
+        this.consume(TokenType.SEMICOLON, "Expect ';' after expression.");
+        return new Expression(expr);
+    }
 }

@@ -11,14 +11,27 @@
 import type {Token} from "./token.ts";
 
 export interface IExprVisitor<R> {
+    visitAssignExpr(expr: Assign): R;
     visitBinaryExpr(expr: Binary): R;
     visitGroupingExpr(expr: Grouping): R;
     visitLiteralExpr(expr: Literal): R;
     visitUnaryExpr(expr: Unary): R;
+    visitVariableExpr(expr: Variable): R;
 }
 
 export abstract class Expr {
     abstract accept<R>(visitor: IExprVisitor<R>): R;
+}
+
+export class Assign extends Expr {
+    constructor(public readonly name: Token, public readonly value: Expr) {
+        super();
+    }
+
+
+    accept<R>(visitor: IExprVisitor<R>): R {
+        return visitor.visitAssignExpr(this);
+    }
 }
 
 export class Binary extends Expr {
@@ -57,5 +70,15 @@ export class Unary extends Expr {
 
     accept<R>(visitor: IExprVisitor<R>): R {
         return visitor.visitUnaryExpr(this);
+    }
+}
+
+export class Variable extends Expr {
+    constructor(public readonly name: Token) {
+        super();
+    }
+
+    accept<R>(visitor: IExprVisitor<R>): R {
+        return visitor.visitVariableExpr(this);
     }
 }
