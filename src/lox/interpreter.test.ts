@@ -99,4 +99,48 @@ print a; // expect: outer
 
     interpreter.interpret(statements); // 0\n 1\n 2\n
   });
+
+  it('clock() 내장 함수 사용', () => {
+    const source = 'print clock();';
+    const scanner = new Scanner(source);
+    const tokens = scanner.scanTokens();
+    const parser = new Parser(tokens);
+    const statements = parser.parse();
+    const interpreter = new Interpreter();
+
+    interpreter.interpret(statements); // ex) 1754032573.276
+  });
+
+  it('함수 선언 인터프리팅', () => {
+    const source = `
+fun sayHi(first, last) {
+  print "Hi, " + first + " " + last + "!";
+}
+sayHi("Dear", "Reader");
+    `;
+    const scanner = new Scanner(source);
+    const tokens = scanner.scanTokens();
+    const parser = new Parser(tokens);
+    const statements = parser.parse();
+    const interpreter = new Interpreter();
+
+    interpreter.interpret(statements); // "Hi Dear Reader!"
+  });
+
+  it('Return', () => {
+    const source = `
+fun fib(n) {
+  if (n <= 1) return n;
+  return fib(n-2) + fib(n-1);
+}
+print fib(5);
+    `;
+    const scanner = new Scanner(source);
+    const tokens = scanner.scanTokens();
+    const parser = new Parser(tokens);
+    const statements = parser.parse();
+    const interpreter = new Interpreter();
+
+    interpreter.interpret(statements); // 5
+  });
 });

@@ -8,6 +8,8 @@ export interface IStmtVisitor<R> {
   visitVarStmt(stmt: Var): R;
   visitIfStmt(stmt: If): R;
   visitWhileStmt(stmt: While): R;
+  visitFunctionStmt(stmt: FunctionStmt): R;
+  visitReturnStmt(stmt: Return): R;
 }
 
 export abstract class Stmt {
@@ -34,6 +36,20 @@ export class Expression extends Stmt {
   }
 }
 
+export class FunctionStmt extends Stmt {
+  constructor(
+    public readonly name: Token,
+    public readonly params: Array<Token>,
+    public readonly body: Array<Stmt>,
+  ) {
+    super();
+  }
+
+  accept<R>(visitor: IStmtVisitor<R>): R {
+    return visitor.visitFunctionStmt(this);
+  }
+}
+
 export class If extends Stmt {
   constructor(
     public readonly condition: Expr,
@@ -55,6 +71,19 @@ export class Print extends Stmt {
 
   accept<R>(visitor: IStmtVisitor<R>): R {
     return visitor.visitPrintStmt(this);
+  }
+}
+
+export class Return extends Stmt {
+  constructor(
+    public readonly keyword: Token,
+    public readonly value: Expr,
+  ) {
+    super();
+  }
+
+  accept<R>(visitor: IStmtVisitor<R>): R {
+    return visitor.visitReturnStmt(this);
   }
 }
 

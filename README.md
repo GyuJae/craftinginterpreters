@@ -23,7 +23,9 @@ equality(동등)       -> comparison ( ( "!=" | "*" ) unary )* ;
 comparison(비교)     -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term(항)             -> factor ( ("-" | "+") factor )* ;
 factor(인수)         -> unary ( ( "/" | "*" ) unary )* ;
-unary(단항)          -> ( "!" | "-" ) unary | primary;
+unary(단항)          -> ( "!" | "-" ) unary | call ;
+call                -> primary ( "(" arguments? ")" )* ;
+arguments           -> expression ( "," expression )* ;
 primary(기본식)       -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
 ```
 
@@ -38,13 +40,17 @@ primary(기본식)       -> NUMBER | STRING | "true" | "false" | "nil" | "(" exp
 
 ```
 program     -> declaration* EOF ;
-declaration -> varDecl | statement ;
+declaration -> funDecl | varDecl | statement ;
+funDecl     -> "fun" function ;
+function    -> IDENTIFIER "(" parameters? ")" block ;
+parameters  -> IDENTIFIER ( "," IDENTIFIER )* ;
 varDecl     -> "var" IDENTIFIER ( "=" expression )? ";" ;
-statement   -> exprStmt | forStmt | ifStmt | printStmt | whileStmt | block ;
+statement   -> exprStmt | forStmt | ifStmt | printStmt | returnStmt | whileStmt | block ;
 exprStmt    -> expression ";" ;
 forStmt     -> "for" "(" ( varDecl | exprStmt | ";" ) expression ? ";" expression? ")" statement ;
 ifStmt      -> "if" "(" expression ")" statement ( "else" statement )? ;
 printStmt   -> "print" expression ";" ;
+returnStmt  -> "return" expression ? ";" ;
 whileStmt   -> "while" "(" expression ")" statement ;
 block       -> "{" declaration* "}" ;
 ```

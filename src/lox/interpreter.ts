@@ -1,6 +1,7 @@
 import {
   Assign,
   Binary,
+  Call,
   Expr,
   Grouping,
   type IExprVisitor,
@@ -12,11 +13,30 @@ import {
 import { TokenType } from './token-type.ts';
 import type { Token } from './token.ts';
 import { RuntimeException } from './runtime-exception.ts';
-import { Block, Expression, If, type IStmtVisitor, Stmt, Var, While } from './stmt.ts';
+import {
+  Block,
+  Expression,
+  FunctionStmt,
+  If,
+  type IStmtVisitor,
+  Return,
+  Stmt,
+  Var,
+  While,
+} from './stmt.ts';
 import { Environment } from './environment.ts';
+import { LoxCallable } from './lox-callable.ts';
+import { Clock } from './clock.ts';
+import { LoxFunction } from './lox-function.ts';
+import { ReturnException } from './return-exception.ts';
 
 export class Interpreter implements IExprVisitor<unknown>, IStmtVisitor<void> {
   private environment = new Environment();
+  public readonly globals: Environment = this.environment;
+
+  constructor() {
+    this.environment.define('clock', new Clock());
+  }
 
   interpret(statements: Array<Stmt>): void {
     try {
@@ -190,5 +210,39 @@ export class Interpreter implements IExprVisitor<unknown>, IStmtVisitor<void> {
     while (this.isTruthy(this.evaluate(stmt.condition))) {
       this.execute(stmt.body);
     }
+  }
+
+  visitCallExpr(expr: Call): unknown {
+    const callee = this.evaluate(expr.callee);
+
+    const args: Array<unknown> = [];
+    for (const arg of expr.args) {
+      args.push(this.evaluate(arg));
+    }
+
+    if (!(callee instanceof LoxCallable)) {
+      throw new RuntimeException(expr.paren, 'Can only call functions and classes.');
+    }
+
+    const fun: LoxCallable = callee as LoxCallable;
+    if (args.length != fun.arity()) {
+      throw new RuntimeException(
+        expr.paren,
+        `Expected ${fun.arity()} arguments but got ${args.length}.`,
+      );
+    }
+    return fun.call(this, args);
+  }
+
+  visitFunctionStmt(stmt: FunctionStmt): void {
+    const fun: LoxFunction = new LoxFunction(stmt, this.environment);
+    this.environment.define(stmt.name.lexeme, fun);
+  }
+
+  visitReturnStmt(stmt: Return): void {
+    let value: unknown;
+    if (stmt.value) value = this.evaluate(stmt.value);
+
+    throw new ReturnException(value);
   }
 }

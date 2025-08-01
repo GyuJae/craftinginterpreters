@@ -18,6 +18,7 @@ export interface IExprVisitor<R> {
   visitUnaryExpr(expr: Unary): R;
   visitVariableExpr(expr: Variable): R;
   visitLogicalExpr(expr: Logical): R;
+  visitCallExpr(expr: Call): R;
 }
 
 export abstract class Expr {
@@ -48,6 +49,20 @@ export class Binary extends Expr {
 
   accept<R>(visitor: IExprVisitor<R>): R {
     return visitor.visitBinaryExpr(this);
+  }
+}
+
+export class Call extends Expr {
+  constructor(
+    public readonly callee: Expr,
+    public readonly paren: Token,
+    public readonly args: Array<Expr>,
+  ) {
+    super();
+  }
+
+  accept<R>(visitor: IExprVisitor<R>): R {
+    return visitor.visitCallExpr(this);
   }
 }
 
